@@ -79,10 +79,14 @@ const L=t=>esc(t).replace(/[A-Za-z]/g,c=>'<span>'+c+'</span>');
 async function loadArticles(){
   const box=$('list');
   try{
-    const r=await fetch(U+'/rest/v1/articles?select=*&order=created_at.desc',{headers:H});
+    const r=await fetch(U+'/rest/v1/articles?select=*&order=id.asc',{headers:H});
     if(!r.ok)throw 0;
-    const a=await r.json();
+    let a=await r.json();
     if(!a.length){box.innerHTML='<p class="note">No articles yet.</p>';return}
+    // දිනපතා මාරු වීම: අද ඉහළින් ඇති ලිපිය හෙට පහළටත්, ඊළඟ ලිපිය ඉහළටත් යයි (ශ්‍රී ලංකා වේලාව, මධ්‍යම රාත්‍රියේදී)
+    const day=Math.floor((Date.now()+5.5*3600e3)/864e5);
+    const k=day%a.length;
+    a=a.slice(k).concat(a.slice(0,k));
     box.innerHTML=a.map(x=>`<article><h2>${L(x.title)}</h2>`+
       x.body.split(/\n\s*\n/).map(p=>`<p>${L(p.trim())}</p>`).join('')+
       (x.words&&x.words.length?`<section class="vocab"><h3>${L('Key words')}</h3><dl>`+
