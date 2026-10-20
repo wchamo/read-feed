@@ -61,7 +61,7 @@ article p{margin:0 0 1.1rem;max-width:40rem}
         <input type="text" id="txt" placeholder="Message…" autocomplete="off">
         <button class="go" id="send">➤</button>
       </div>
-      <label class="k"><input type="checkbox" id="keep"> දින 7ක් තබන්න (නැතහොත් එක් වරක් කියවූ පසු මැකේ)</label>
+      <label class="k"><input type="checkbox" id="keep"> 7)</label>
     </div>
   </div>
 </div>
@@ -74,7 +74,6 @@ const $=id=>document.getElementById(id);
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- Articles ---------- */
-// සෑම ඉංග්‍රීසි අකුරක්ම වෙන වෙනම click කළ හැකි සේ <span> වලින් ඔතයි
 const L=t=>esc(t).replace(/[A-Za-z]/g,c=>'<span>'+c+'</span>');
 async function loadArticles(){
   const box=$('list');
@@ -95,7 +94,6 @@ async function loadArticles(){
   }catch(e){box.innerHTML='<p class="note">Could not load articles. setup.sql Run කර ඇත්දැයි පරීක්ෂා කරන්න.</p>'}
 }
 
-/* ---------- රහස් කේතය: පිටුවේ නැත; Supabase (server) හි පමණක් ඇත ---------- */
 let buf='',tm=null;
 document.addEventListener('click',e=>{
   const s=e.target;
@@ -110,7 +108,7 @@ async function checkCode(){
   }catch(e){}
 }
 
-/* ---------- Messenger ---------- */
+
 let timer=null,shown=new Set(),rec=null,chunks=[];
 const mine=new Set(JSON.parse(localStorage.getItem('_m')||'[]')); // මෙම උපාංගයේ පමණක්; DB හි නැත
 const saveMine=()=>localStorage.setItem('_m',JSON.stringify([...mine].slice(-100)));
