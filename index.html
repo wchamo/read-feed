@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;1,400&family=Noto+Sans+Sinhala:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f1;--paper:#fbfcfb;--ink:#16232a;--mute:#5a6b72;--line:#cdd8d6;--acc:#0e5a62;--acc2:#e3f0ee;--me:#d4ebe7;--them:#f0f0f4}
+@media(prefers-color-scheme:dark){:root{--bg:#0f171a;--paper:#162126;--ink:#e6eeee;--mute:#93a5aa;--line:#2a3a40;--acc:#6cc4cc;--acc2:#1c2f33;--me:#1f4448;--them:#243138}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:19px/1.7 Newsreader,Georgia,serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+main{max-width:46rem;margin:0 auto;padding:1.5rem 1rem 4rem}
+h1.site{font-size:1rem;font-weight:400;color:var(--mute);margin:0 0 1.5rem;font-style:italic}
+article{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:2rem 1.5rem;margin-bottom:2rem}
+article h2{font-size:2rem;line-height:1.2;margin:0 0 1.25rem;font-weight:600}
+article p{margin:0 0 1.1rem;max-width:40rem}
+.vocab{margin-top:2rem;border-top:2px solid var(--acc);padding-top:1rem}
+.vocab h3{margin:0 0 .5rem;font-size:1.05rem;color:var(--acc)}
+.vocab dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:.35rem 1.25rem}
+.vocab dt{font-weight:600}
+.vocab dd{margin:0;font-family:'Noto Sans Sinhala',sans-serif;font-size:.95rem;color:var(--mute)}
+.note{color:var(--mute);text-align:center;padding:2rem}
+/* popup */
+#ov{position:fixed;inset:0;background:rgba(5,12,14,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:1rem}
+#ov.on{display:flex}
+#box{width:min(26rem,100%);height:min(34rem,90vh);background:var(--paper);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;font:16px/1.4 system-ui,'Noto Sans Sinhala',sans-serif}
+#log{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.5rem}
+#log .e{margin:auto;color:var(--mute);text-align:center;font-size:.85rem}
+.m{max-width:80%;padding:.5rem .7rem;border-radius:12px;background:var(--them);align-self:flex-start;word-break:break-word}
+.m.me{background:var(--me);align-self:flex-end}
+.m img,.m video{max-width:100%;border-radius:8px;display:block}
+.m audio{max-width:100%}
+.m small{display:block;color:var(--mute);font-size:.7rem;margin-top:.2rem}
+#bar{border-top:1px solid var(--line);padding:.5rem;display:flex;flex-direction:column;gap:.4rem}
+#row{display:flex;gap:.4rem;align-items:center}
+#bar input[type=text]{flex:1;min-width:0;padding:.55rem .7rem;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+#bar button,.att{border:0;background:var(--acc2);color:var(--ink);border-radius:8px;padding:.5rem .65rem;font-size:1.05rem;cursor:pointer;line-height:1}
+#bar button.go{background:var(--acc);color:var(--paper)}
+#bar button.rec{background:#c0392b;color:#fff}
+#bar button:focus-visible,#bar input:focus-visible,.att:focus-within{outline:2px solid var(--acc);outline-offset:1px}
+#bar label.k{font-size:.8rem;color:var(--mute);display:flex;gap:.4rem;align-items:center}
+.att{position:relative;display:inline-flex}.att input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+  <h1 class="site">Reading Room</h1>
+  <div id="list"><p class="note">Loading articles…</p></div>
+</main>
+
+<div id="ov" aria-hidden="true">
+  <div id="box" role="dialog" aria-label="Messages">
+    <div id="log"></div>
+    <div id="bar">
+      <div id="row">
+        <label class="att" title="පින්තූර / Video">📎<input type="file" id="file" accept="image/*,video/*"></label>
+        <button id="mic" title="Voice message">🎤</button>
+        <input type="text" id="txt" placeholder="Message…" autocomplete="off">
+        <button class="go" id="send">➤</button>
+      </div>
+      <label class="k"><input type="checkbox" id="keep"> දින 7ක් තබන්න (නැතහොත් එක් වරක් කියවූ පසු මැකේ)</label>
+    </div>
+  </div>
+</div>
+
+<script>
+const U='https://cfozezblcpyfyzsdjvph.supabase.co';
+const K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmb3plemJsY3B5Znl6c2RqdnBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NTE4NDgsImV4cCI6MjEwNzUyNzg0OH0.SMEcfEw9uuXq9VrsRFzl9pyZub40auLjHWdTJ1iGwdE';
+const H={apikey:K,Authorization:'Bearer '+K};
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- Articles ---------- */
+// සෑම ඉංග්‍රීසි අකුරක්ම වෙන වෙනම click කළ හැකි සේ <span> වලින් ඔතයි
+const L=t=>esc(t).replace(/[A-Za-z]/g,c=>'<span>'+c+'</span>');
+async function loadArticles(){
+  const box=$('list');
+  try{
+    const r=await fetch(U+'/rest/v1/articles?select=*&order=created_at.desc',{headers:H});
+    if(!r.ok)throw 0;
+    const a=await r.json();
+    if(!a.length){box.innerHTML='<p class="note">No articles yet.</p>';return}
+    box.innerHTML=a.map(x=>`<article><h2>${L(x.title)}</h2>`+
+      x.body.split(/\n\s*\n/).map(p=>`<p>${L(p.trim())}</p>`).join('')+
+      (x.words&&x.words.length?`<section class="vocab"><h3>${L('Key words')}</h3><dl>`+
+        x.words.map(w=>`<dt>${L(w.en)}</dt><dd>${esc(w.si)}</dd>`).join('')+`</dl></section>`:'')+
+      `</article>`).join('');
+  }catch(e){box.innerHTML='<p class="note">Could not load articles. setup.sql Run කර ඇත්දැයි පරීක්ෂා කරන්න.</p>'}
+}
+
+/* ---------- රහස් කේතය: පිටුවේ නැත; Supabase (server) හි පමණක් ඇත ---------- */
+let buf='',tm=null;
+document.addEventListener('click',e=>{
+  const s=e.target;
+  if(s.tagName!=='SPAN'||s.children.length||!/^[A-Za-z]$/.test(s.textContent)||!s.closest('#list'))return;
+  buf=(buf+s.textContent.toUpperCase()).slice(-20);   // අවසන් අකුරු 20 පමණක්
+  clearTimeout(tm);tm=setTimeout(checkCode,500);       // click නතර වී තත්පර 0.5කට පසු පරීක්ෂා කරයි
+});
+async function checkCode(){
+  try{
+    const r=await fetch(U+'/rest/v1/rpc/check_code',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({buf})});
+    if(r.ok&&(await r.json())===true){buf='';openBox()}
+  }catch(e){}
+}
+
+/* ---------- Messenger ---------- */
+let timer=null,shown=new Set(),rec=null,chunks=[];
+const mine=new Set(JSON.parse(localStorage.getItem('_m')||'[]')); // මෙම උපාංගයේ පමණක්; DB හි නැත
+const saveMine=()=>localStorage.setItem('_m',JSON.stringify([...mine].slice(-100)));
+
+function openBox(){
+  $('log').innerHTML='<div class="e">No messages</div>';shown=new Set();
+  $('ov').classList.add('on');$('ov').setAttribute('aria-hidden','false');
+  fetch(U+'/rest/v1/rpc/purge_expired',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:'{}'}).catch(()=>{});
+  pull();timer=setInterval(pull,3000);
+}
+function closeBox(){
+  clearInterval(timer);timer=null;
+  if(rec&&rec.state!=='inactive'){rec.onstop=null;rec.stream.getTracks().forEach(t=>t.stop());rec.stop()}
+  rec=null;$('mic').classList.remove('rec');
+  $('log').querySelectorAll('img,video,audio').forEach(n=>n.src&&URL.revokeObjectURL(n.src));
+  $('log').innerHTML='';$('txt').value='';$('file').value='';$('keep').checked=false;
+  $('ov').classList.remove('on');$('ov').setAttribute('aria-hidden','true');
+}
+$('ov').addEventListener('click',e=>{if(e.target===$('ov'))closeBox()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('ov').classList.contains('on'))closeBox()});
+
+function add(m,own,url){
+  const log=$('log');const em=log.querySelector('.e');if(em)em.remove();
+  const d=document.createElement('div');d.className='m'+(own?' me':'');
+  if(m.kind==='text')d.textContent=m.body;
+  else{const t=m.kind==='image'?'img':m.kind;const n=document.createElement(t);n.src=url;
+    if(t!=='img')n.controls=true;if(m.kind==='video')n.playsInline=true;d.appendChild(n)}
+  if(m.keep){const s=document.createElement('small');s.textContent='7 days';d.appendChild(s)}
+  log.appendChild(d);log.scrollTop=log.scrollHeight;
+}
+
+let busy=false;
+async function pull(){
+  if(busy)return;busy=true;
+  try{
+    const ex=mine.size?'&id=not.in.('+[...mine].join(',')+')':'';
+    const now=encodeURIComponent(new Date().toISOString());
+    // එක් වරක් කියවීමට: මකා දමමින් ම ලබාගනී (atomic)
+    const a=await fetch(`${U}/rest/v1/messages?keep=eq.false&expires_at=gt.${now}${ex}`,
+      {method:'DELETE',headers:{...H,Prefer:'return=representation'}});
+    const once=a.ok?await a.json():[];
+    const b=await fetch(`${U}/rest/v1/messages?keep=eq.true&expires_at=gt.${now}${ex}&select=*&order=created_at`,{headers:H});
+    const kept=b.ok?(await b.json()).filter(m=>!shown.has(m.id)):[];
+    const all=[...once,...kept].sort((x,y)=>x.created_at<y.created_at?-1:1);
+    for(const m of all){
+      shown.add(m.id);let url=null;
+      if(m.media_path){
+        try{
+          const f=await fetch(`${U}/storage/v1/object/media/${m.media_path}`,{headers:H});
+          url=URL.createObjectURL(await f.blob());
+          if(!m.keep)fetch(`${U}/storage/v1/object/media/${m.media_path}`,{method:'DELETE',headers:H}).catch(()=>{});
+        }catch(e){continue}
+      }
+      if($('ov').classList.contains('on'))add(m,false,url);
+    }
+  }catch(e){}
+  busy=false;
+}
+
+async function send(kind,body,file){
+  const id=crypto.randomUUID(),keep=$('keep').checked;let path=null;
+  try{
+    if(file){
+      const type=file.type.split(';')[0];
+      path=id+'.'+(type.split('/')[1]||'bin');
+      const u=await fetch(`${U}/storage/v1/object/media/${path}`,{method:'POST',headers:{...H,'Content-Type':type},body:file});
+      if(!u.ok)throw 0;
+    }
+    const m={id,kind,body:body||null,media_path:path,keep,expires_at:new Date(Date.now()+(keep?7:1)*864e5).toISOString()};
+    const r=await fetch(U+'/rest/v1/messages',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(m)});
+    if(!r.ok)throw 0;
+    mine.add(id);saveMine();
+    add(m,true,file?URL.createObjectURL(file):null);
+  }catch(e){alert('යැවීමට නොහැකි විය (Send failed)')}
+}
+function sendText(){const v=$('txt').value.trim();if(!v)return;$('txt').value='';send('text',v)}
+$('send').onclick=sendText;
+$('txt').addEventListener('keydown',e=>{if(e.key==='Enter')sendText()});
+$('file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(f.size>25*1024*1024)return alert('25MB ට වැඩි විය නොහැක');
+  send(f.type.startsWith('video')?'video':'image',null,f)};
+$('mic').onclick=async()=>{
+  if(rec&&rec.state==='recording'){rec.stop();return}
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({audio:true});
+    chunks=[];rec=new MediaRecorder(st);
+    rec.ondataavailable=e=>chunks.push(e.data);
+    rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());$('mic').classList.remove('rec');
+      const b=new Blob(chunks,{type:rec.mimeType||'audio/webm'});if(b.size)send('audio',null,b)};
+    rec.start();$('mic').classList.add('rec');
+  }catch(e){alert('Microphone භාවිතයට අවසර නැත')}
+};
+
+// Right click / long-press context menu අක්‍රිය කිරීම
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+loadArticles();
+</script>
+</body>
+</html>
