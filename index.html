@@ -190,6 +190,7 @@ function add(m,own,url){
 
 // pull සහ send එකවර ක්‍රියා නොවන සේ පෝලිමක් (lock). එසේ නොවූ විට යවන ගමන්ම ඔබේම පණිවිඩය
 // pull එක මගින් "ලැබුණු" පණිවිඩයක් ලෙස කියවා මැකී යා හැක.
+const F=(u,o={},ms=15000)=>fetch(u,{...o,signal:window.AbortSignal&&AbortSignal.timeout?AbortSignal.timeout(ms):undefined});
 let q=Promise.resolve(),pulling=false;
 const lock=f=>{const r=q.then(f);q=r.catch(()=>{});return r};
 async function pull(){
@@ -201,10 +202,10 @@ async function doPull(){
     const ex=mine.size?'&id=not.in.('+[...mine].join(',')+')':'';
     const now=encodeURIComponent(new Date().toISOString());
     // එක් වරක් කියවීමට: මකා දමමින් ම ලබාගනී (atomic)
-    const a=await fetch(`${U}/rest/v1/messages?keep=eq.false&expires_at=gt.${now}${ex}`,
+    const a=await F(`${U}/rest/v1/messages?keep=eq.false&expires_at=gt.${now}${ex}`,
       {method:'DELETE',headers:{...H,Prefer:'return=representation'}});
     const once=a.ok?await a.json():[];
-    const b=await fetch(`${U}/rest/v1/messages?keep=eq.true&expires_at=gt.${now}${ex}&select=*&order=created_at`,{headers:H});
+    const b=await F(`${U}/rest/v1/messages?keep=eq.true&expires_at=gt.${now}${ex}&select=*&order=created_at`,{headers:H});
     const kept=b.ok?(await b.json()).filter(m=>!shown.has(m.id)):[];
     const all=[...once,...kept].sort((x,y)=>x.created_at<y.created_at?-1:1);
     for(const m of all){
@@ -212,7 +213,7 @@ async function doPull(){
       shown.add(m.id);let url=null;
       if(m.media_path){
         try{
-          const f=await fetch(`${U}/storage/v1/object/media/${m.media_path}`,{headers:H});
+          const f=await F(`${U}/storage/v1/object/media/${m.media_path}`,{headers:H});
           url=URL.createObjectURL(await f.blob());
           if(!m.keep)fetch(`${U}/storage/v1/object/media/${m.media_path}`,{method:'DELETE',headers:H}).catch(()=>{});
         }catch(e){continue}
@@ -233,18 +234,18 @@ async function doSend(id,keep,kind,body,file){
     if(file){
       const type=file.type.split(';')[0];
       path=id+'.'+(type.split('/')[1]||'bin');
-      const u=await fetch(`${U}/storage/v1/object/media/${path}`,{method:'POST',headers:{...H,'Content-Type':type},body:file});
+      const u=await F(`${U}/storage/v1/object/media/${path}`,{method:'POST',headers:{...H,'Content-Type':type},body:file},90000);
       if(!u.ok)throw 0;
     }
     const m={id,kind,body:body||null,media_path:path,keep,expires_at:new Date(Date.now()+(keep?7:1)*864e5).toISOString()};
-    const r=await fetch(U+'/rest/v1/messages',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(m)});
+    const r=await F(U+'/rest/v1/messages',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(m)});
     if(!r.ok)throw 0;
     add(m,true,file?URL.createObjectURL(file):null);
   }catch(e){mine.delete(id);saveMine();alert('යැවීමට නොහැකි විය (Send failed)')}
 }
 function sendText(){const v=$('txt').value.trim();if(!v)return;$('txt').value='';send('text',v)}
 $('send').onclick=sendText;
-$('txt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229)sendText()}); // සිංහල IME composition අතරතුර Enter නොසලකයි
+$('txt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)sendText()}); // IME composition අතරතුර පමණක් Enter නොසලකයි
 $('file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   if(f.size>25*1024*1024)return alert('25MB ට වැඩි විය නොහැක');
   send(f.type.startsWith('video')?'video':'image',null,f)};
