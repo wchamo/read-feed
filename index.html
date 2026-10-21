@@ -12,7 +12,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:19px/1.7 Newsreader,Georgia,serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
-main{max-width:46rem;margin:0 auto;padding:1.5rem 1rem 4rem}
+main{max-width:46rem;margin:0 auto;padding:1.5rem 1rem 6rem}
 h1.site{font-size:1rem;font-weight:400;color:var(--mute);margin:0 0 1.5rem;font-style:italic}
 article{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:2rem 1.5rem;margin-bottom:2rem}
 article h2{font-size:2rem;line-height:1.2;margin:0 0 1.25rem;font-weight:600}
@@ -23,6 +23,16 @@ article p{margin:0 0 1.1rem;max-width:40rem}
 .vocab dt{font-weight:600}
 .vocab dd{margin:0;font-family:'Noto Sans Sinhala',sans-serif;font-size:.95rem;color:var(--mute)}
 .note{color:var(--mute);text-align:center;padding:2rem}
+/* listen / next / footer */
+.top{display:flex;gap:.75rem;align-items:flex-start;justify-content:space-between}
+.say{border:0;background:none;color:var(--mute);cursor:pointer;font-size:.9rem;line-height:1;padding:.2rem .35rem;border-radius:4px;vertical-align:middle;opacity:.8}
+.say:hover,.say.on{color:var(--acc);opacity:1}
+.say:focus-visible,.nx:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.nxw{text-align:right;margin-top:1.5rem}
+.nx{border:0;background:none;font:italic .95rem Newsreader,Georgia,serif;color:var(--mute);opacity:.55;cursor:pointer;padding:.3rem .2rem}
+.nx:hover{opacity:1;color:var(--acc)}
+#ft{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--paper);border-top:1px solid var(--line);text-align:center;color:var(--mute);font:italic .85rem/1.4 Newsreader,Georgia,serif;padding:.4rem 1rem calc(.4rem + env(safe-area-inset-bottom,0px))}
+#ft b{display:block;font-weight:600;font-style:normal;color:var(--ink);font-size:.9rem}
 /* popup */
 #ov{position:fixed;inset:0;background:rgba(5,12,14,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:1rem}
 #ov.on{display:flex}
@@ -51,6 +61,8 @@ article p{margin:0 0 1.1rem;max-width:40rem}
   <div id="list"><p class="note">Loading articles…</p></div>
 </main>
 
+<footer id="ft"><b>Read a Book – Feed Your Soul</b>© Chamo’s Reading Room (2026)</footer>
+
 <div id="ov" aria-hidden="true">
   <div id="box" role="dialog" aria-label="Messages">
     <div id="log"></div>
@@ -78,6 +90,41 @@ const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&qu
 // words තීරුව array එකක් ලෙස සහතික කරයි (text ලෙස සුරැකී තිබුණත් කියවයි)
 const nw=w=>{try{if(typeof w==='string')w=JSON.parse(w)}catch(e){w=[]}return Array.isArray(w)?w.filter(x=>x&&x.en):[]};
 const L=t=>esc(t).replace(/[A-Za-z]/g,c=>'<span>'+c+'</span>');
+let arts=[],idx=0;
+const TTS='speechSynthesis' in window;
+const sp=(a,t)=>TTS?`<button class="say" ${a} aria-label="${t}" title="${t}">🔊</button>`:'';
+function show(){
+  const x=arts[idx],ws=nw(x.words);
+  $('list').innerHTML=`<article><div class="top"><h2>${L(x.title)}</h2>`+
+    (TTS?'<button class="say" data-all aria-label="Listen to the whole article" title="Listen to the whole article">🎧</button>':'')+`</div>`+
+    x.body.split(/\n\s*\n/).map(p=>`<p>${L(p.trim())} ${sp('','Listen to this paragraph')}</p>`).join('')+
+    (ws.length?`<section class="vocab"><h3>${L('Key words')}</h3><dl>`+
+      ws.map(w=>`<dt>${L(w.en)} ${sp('data-w="'+esc(w.en)+'"','Pronounce')}</dt><dd>${esc(w.si||'')}</dd>`).join('')+`</dl></section>`:'')+
+    (arts.length>1?`<div class="nxw"><button class="nx" id="nx" title="ඊළඟ ලිපිය" aria-label="Next article">Onward →</button></div>`:'')+
+    `</article>`;
+}
+/* ---- Text to speech ---- */
+let cur=null;
+const pt=n=>{const c=n.cloneNode(true);c.querySelectorAll('button').forEach(b=>b.remove());return c.textContent.replace(/\s+/g,' ').trim()};
+function stopSpeech(){if(TTS)speechSynthesis.cancel();document.querySelectorAll('.say.on').forEach(b=>b.classList.remove('on'));cur=null}
+function speak(parts,btn,rate){
+  const same=cur===btn;stopSpeech();if(same)return;
+  cur=btn;btn.classList.add('on');
+  const v=speechSynthesis.getVoices().find(v=>/^en/i.test(v.lang));
+  parts.forEach((t,i)=>{
+    const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=rate;if(v)u.voice=v;
+    if(i===parts.length-1)u.onend=u.onerror=()=>{if(cur===btn){btn.classList.remove('on');cur=null}};
+    speechSynthesis.speak(u);
+  });
+}
+$('list').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.id==='nx'){stopSpeech();idx=(idx+1)%arts.length;show();scrollTo({top:0});return}
+  if(!b.classList.contains('say'))return;
+  if(b.dataset.w)speak([b.dataset.w],b,.8);
+  else if('all' in b.dataset)speak([...b.closest('article').querySelectorAll('h2,p')].map(pt),b,.9);
+  else speak([pt(b.closest('p'))],b,.9);
+});
 async function loadArticles(){
   const box=$('list');
   try{
@@ -89,11 +136,7 @@ async function loadArticles(){
     const day=Math.floor((Date.now()+5.5*3600e3)/864e5);
     const k=day%a.length;
     a=a.slice(k).concat(a.slice(0,k));
-    box.innerHTML=a.map(x=>`<article><h2>${L(x.title)}</h2>`+
-      x.body.split(/\n\s*\n/).map(p=>`<p>${L(p.trim())}</p>`).join('')+
-      (nw(x.words).length?`<section class="vocab"><h3>${L('Key words')}</h3><dl>`+
-        nw(x.words).map(w=>`<dt>${L(w.en)}</dt><dd>${esc(w.si||'')}</dd>`).join('')+`</dl></section>`:'')+
-      `</article>`).join('');
+    arts=a;idx=0;show();
   }catch(e){box.innerHTML='<p class="note">Could not load articles. setup.sql Run කර ඇත්දැයි පරීක්ෂා කරන්න.</p>'}
 }
 
@@ -118,6 +161,7 @@ const mine=new Set(JSON.parse(localStorage.getItem('_m')||'[]')); // මෙම �
 const saveMine=()=>localStorage.setItem('_m',JSON.stringify([...mine].slice(-100)));
 
 function openBox(){
+  stopSpeech();
   $('log').innerHTML='<div class="e">No messages</div>';shown=new Set();
   $('ov').classList.add('on');$('ov').setAttribute('aria-hidden','false');
   fetch(U+'/rest/v1/rpc/purge_expired',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:'{}'}).catch(()=>{});
