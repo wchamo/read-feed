@@ -53,6 +53,14 @@ article p{margin:0 0 1.1rem;max-width:40rem}
 #bar button:focus-visible,#bar input:focus-visible,.att:focus-within{outline:2px solid var(--acc);outline-offset:1px}
 #bar label.k{font-size:.8rem;color:var(--mute);display:flex;gap:.4rem;align-items:center}
 .att{position:relative;display:inline-flex}.att input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+[hidden]{display:none!important}
+#pick{flex:1;display:flex;gap:1.25rem;align-items:center;justify-content:center}
+#pick button{width:5rem;height:5rem;border:1px solid var(--line);border-radius:14px;background:var(--acc2);color:var(--ink);font:600 1.8rem Newsreader,Georgia,serif;cursor:pointer}
+#pick button:hover{border-color:var(--acc)}
+#pick button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+#log{touch-action:manipulation}
+.m small .x{border:0;background:none;color:var(--mute);cursor:pointer;font-size:.75rem;padding:0 .15rem}
+.m small .x:hover{color:#c0392b}
 </style>
 </head>
 <body>
@@ -65,15 +73,15 @@ article p{margin:0 0 1.1rem;max-width:40rem}
 
 <div id="ov" aria-hidden="true">
   <div id="box" role="dialog" aria-label="Messages">
-    <div id="log"></div>
-    <div id="bar">
+    <div id="pick"><button data-m="B" aria-label="B">B</button><button data-m="C" aria-label="C">C</button></div>
+    <div id="log" hidden></div>
+    <div id="bar" hidden>
       <div id="row">
         <label class="att" title="පින්තූර / Video">📎<input type="file" id="file" accept="image/*,video/*"></label>
         <button id="mic" title="Voice message">🎤</button>
         <input type="text" id="txt" placeholder="Message…" autocomplete="off">
         <button class="go" id="send">➤</button>
       </div>
-      <label class="k"><input type="checkbox" id="keep"> දින 7ක් තබන්න (නැතහොත් එක් වරක් කියවූ පසු මැකේ)</label>
     </div>
   </div>
 </div>
@@ -140,13 +148,12 @@ async function loadArticles(){
   }catch(e){box.innerHTML='<p class="note">Could not load articles. setup.sql Run කර ඇත්දැයි පරීක්ෂා කරන්න.</p>'}
 }
 
-/* ---------- රහස් කේතය: පිටුවේ නැත; Supabase (server) හි පමණක් ඇත ---------- */
 let buf='',tm=null;
 document.addEventListener('click',e=>{
   const s=e.target;
   if(s.tagName!=='SPAN'||s.children.length||!/^[A-Za-z]$/.test(s.textContent)||!s.closest('#list'))return;
-  buf=(buf+s.textContent.toUpperCase()).slice(-20);   // අවසන් අකුරු 20 පමණක්
-  clearTimeout(tm);tm=setTimeout(checkCode,500);       // click නතර වී තත්පර 0.5කට පසු පරීක්ෂා කරයි
+  buf=(buf+s.textContent.toUpperCase()).slice(-20);   // 20 පමණක්
+  clearTimeout(tm);tm=setTimeout(checkCode,500);       // click 0.5
 });
 async function checkCode(){
   try{
@@ -160,36 +167,91 @@ let timer=null,shown=new Set(),rec=null,chunks=[];
 const mine=new Set(JSON.parse(localStorage.getItem('_m')||'[]')); // මෙම උපාංගයේ පමණක්; DB හි නැත
 const saveMine=()=>localStorage.setItem('_m',JSON.stringify([...mine].slice(-100)));
 
+let mode=null,rev=false,taps=[],busyB=false;const bm=new Map();   // mode: 'B' = ගබඩා (දින 3), 'C' = එක් වරක් කියවීම
 function openBox(){
-  stopSpeech();
-  $('log').innerHTML='<div class="e">No messages</div>';shown=new Set();
+  stopSpeech();mode=null;rev=false;taps=[];hideB();
+  $('pick').hidden=false;$('log').hidden=true;$('bar').hidden=true;
   $('ov').classList.add('on');$('ov').setAttribute('aria-hidden','false');
   fetch(U+'/rest/v1/rpc/purge_expired',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:'{}'}).catch(()=>{});
-  pull();timer=setInterval(pull,3000);
+}
+$('pick').addEventListener('click',e=>{const b=e.target.closest('button');if(b)start(b.dataset.m)});
+function start(m){
+  mode=m;$('pick').hidden=true;$('log').hidden=false;$('bar').hidden=false;$('log').innerHTML='';
+  if(m==='C'){$('log').innerHTML='<div class="e">No messages</div>';shown=new Set();pull();timer=setInterval(pull,3000)}
+  else timer=setInterval(pullB,3000);   // B: 5 load/
 }
 function closeBox(){
   clearInterval(timer);timer=null;
   if(rec&&rec.state!=='inactive'){rec.onstop=null;rec.stream.getTracks().forEach(t=>t.stop());rec.stop()}
   rec=null;$('mic').classList.remove('rec');
   $('log').querySelectorAll('img,video,audio').forEach(n=>n.src&&URL.revokeObjectURL(n.src));
-  $('log').innerHTML='';$('txt').value='';$('file').value='';$('keep').checked=false;
+  hideB();$('log').innerHTML='';$('txt').value='';$('file').value='';
+  mode=null;rev=false;taps=[];
   $('ov').classList.remove('on');$('ov').setAttribute('aria-hidden','true');
 }
 $('ov').addEventListener('click',e=>{if(e.target===$('ov'))closeBox()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('ov').classList.contains('on'))closeBox()});
 
-function add(m,own,url){
+function add(m,own,url,del){
   const log=$('log');const em=log.querySelector('.e');if(em)em.remove();
   const d=document.createElement('div');d.className='m'+(own?' me':'');
   if(m.kind==='text')d.textContent=m.body;
   else{const t=m.kind==='image'?'img':m.kind;const n=document.createElement(t);n.src=url;
     if(t!=='img')n.controls=true;if(m.kind==='video')n.playsInline=true;d.appendChild(n)}
-  if(m.keep){const s=document.createElement('small');s.textContent='7 days';d.appendChild(s)}
-  log.appendChild(d);log.scrollTop=log.scrollHeight;
+  if(del){   // B: ඉතිරි දින ගණන + මකන බොත්තම
+    const sm=document.createElement('small'),x=document.createElement('button');
+    sm.textContent=Math.max(1,Math.ceil((new Date(m.expires_at)-Date.now())/864e5))+'d ';
+    x.className='x';x.textContent='✕';x.title='Delete';x.setAttribute('aria-label','Delete message');
+    x.onclick=()=>delMsg(m,d);sm.appendChild(x);d.appendChild(sm);
+  }
+  log.appendChild(d);log.scrollTop=log.scrollHeight;return d;
 }
 
-// pull සහ send එකවර ක්‍රියා නොවන සේ පෝලිමක් (lock). එසේ නොවූ විට යවන ගමන්ම ඔබේම පණිවිඩය
-// pull එක මගින් "ලැබුණු" පණිවිඩයක් ලෙස කියවා මැකී යා හැක.
+/* ---------- B:  3) ---------- */
+function hideB(){for(const o of bm.values())o.url&&URL.revokeObjectURL(o.url);bm.clear();if(mode==='B'||mode===null)$('log').innerHTML=''}
+//  3 5 
+$('log').addEventListener('click',e=>{
+  if(mode!=='B'||e.target.closest('.m'))return;
+  const t=Date.now();taps=taps.filter(x=>t-x<3000);taps.push(t);
+  if(taps.length>=5){taps=[];rev=!rev;if(rev)pullB();else hideB()}
+});
+async function pullB(){
+  if(busyB||mode!=='B'||!rev)return;busyB=true;
+  try{
+    const now=encodeURIComponent(new Date().toISOString());
+    const r=await F(`${U}/rest/v1/messages?keep=eq.true&expires_at=gt.${now}&select=*&order=created_at`,{headers:H});
+    if(!r.ok)throw 0;
+    const rows=await r.json();
+    if(!rev||mode!=='B')return;
+    const ids=new Set(rows.map(m=>m.id));
+    for(const [id,o] of [...bm])if(!ids.has(id)){o.el.remove();o.url&&URL.revokeObjectURL(o.url);bm.delete(id)}   // අනෙක් පාර්ශවය මැකූ ඒවා
+    for(const m of rows){
+      if(bm.has(m.id))continue;
+      let url=null;
+      if(m.media_path){
+        try{const f=await F(`${U}/storage/v1/object/media/${m.media_path}`,{headers:H});url=URL.createObjectURL(await f.blob())}catch(e){continue}
+      }
+      if(!rev||mode!=='B'||bm.has(m.id)){url&&URL.revokeObjectURL(url);if(!rev||mode!=='B')return;continue}
+      bm.set(m.id,{el:add(m,mine.has(m.id),url,true),url});
+    }
+    const lg=$('log');if(!bm.size&&!lg.querySelector('.e'))lg.innerHTML='<div class="e">No messages</div>';
+  }catch(e){}finally{busyB=false}
+}
+async function delMsg(m,el){
+  if(!confirm('මෙම පණිවිඩය මකන්නද?'))return;
+  try{
+    const r=await F(`${U}/rest/v1/messages?id=eq.${m.id}`,{method:'DELETE',headers:H});
+    if(!r.ok)throw 0;
+    if(m.media_path)F(`${U}/storage/v1/object/media/${m.media_path}`,{method:'DELETE',headers:H}).catch(()=>{});
+    const o=bm.get(m.id);if(o){o.url&&URL.revokeObjectURL(o.url);bm.delete(m.id)}
+    el.remove();mine.delete(m.id);saveMine();
+    const lg=$('log');if(!bm.size&&!lg.querySelector('.e'))lg.innerHTML='<div class="e">No messages</div>';
+  }catch(e){alert('මැකීමට නොහැකි විය (Delete failed)')}
+}
+function flash(){const b=$('send');b.textContent='✓';setTimeout(()=>b.textContent='➤',900)}
+
+// pull සහ send එකවර ක්‍රියා නොවන සේ පෝලිමක් (lock). 
+// pull එක මගින් 
 const F=(u,o={},ms=15000)=>fetch(u,{...o,signal:window.AbortSignal&&AbortSignal.timeout?AbortSignal.timeout(ms):undefined});
 let q=Promise.resolve(),pulling=false;
 const lock=f=>{const r=q.then(f);q=r.catch(()=>{});return r};
@@ -201,13 +263,11 @@ async function doPull(){
   try{
     const ex=mine.size?'&id=not.in.('+[...mine].join(',')+')':'';
     const now=encodeURIComponent(new Date().toISOString());
-    // එක් වරක් කියවීමට: මකා දමමින් ම ලබාගනී (atomic)
+    // එක් වරක් කියවීමට:  (atomic)
     const a=await F(`${U}/rest/v1/messages?keep=eq.false&expires_at=gt.${now}${ex}`,
       {method:'DELETE',headers:{...H,Prefer:'return=representation'}});
     const once=a.ok?await a.json():[];
-    const b=await F(`${U}/rest/v1/messages?keep=eq.true&expires_at=gt.${now}${ex}&select=*&order=created_at`,{headers:H});
-    const kept=b.ok?(await b.json()).filter(m=>!shown.has(m.id)):[];
-    const all=[...once,...kept].sort((x,y)=>x.created_at<y.created_at?-1:1);
+    const all=once.sort((x,y)=>x.created_at<y.created_at?-1:1);
     for(const m of all){
       if(mine.has(m.id))continue;
       shown.add(m.id);let url=null;
@@ -224,7 +284,7 @@ async function doPull(){
 }
 
 function send(kind,body,file){
-  const id=crypto.randomUUID(),keep=$('keep').checked;
+  const id=crypto.randomUUID(),keep=mode==='B';   // B = ගබඩා (දින 3), C = එක් වරක් කියවූ පසු මැකේ
   mine.add(id);saveMine();                 // යැවීමට පෙර ම සටහන් කරයි
   return lock(()=>doSend(id,keep,kind,body,file));
 }
@@ -237,17 +297,21 @@ async function doSend(id,keep,kind,body,file){
       const u=await F(`${U}/storage/v1/object/media/${path}`,{method:'POST',headers:{...H,'Content-Type':type},body:file},90000);
       if(!u.ok)throw 0;
     }
-    const m={id,kind,body:body||null,media_path:path,keep,expires_at:new Date(Date.now()+(keep?7:1)*864e5).toISOString()};
+    const m={id,kind,body:body||null,media_path:path,keep,expires_at:new Date(Date.now()+(keep?3:1)*864e5).toISOString()};
     const r=await F(U+'/rest/v1/messages',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(m)});
     if(!r.ok)throw 0;
-    add(m,true,file?URL.createObjectURL(file):null);
+    if(!$('ov').classList.contains('on'))return;
+    if(keep){
+      if(rev&&mode==='B'){const url=file?URL.createObjectURL(file):null;bm.set(id,{el:add(m,true,url,true),url})}
+      else flash();                       // 
+    }else if(mode==='C')add(m,true,file?URL.createObjectURL(file):null);
   }catch(e){mine.delete(id);saveMine();alert('යැවීමට නොහැකි විය (Send failed)')}
 }
 function sendText(){const v=$('txt').value.trim();if(!v)return;$('txt').value='';send('text',v)}
 $('send').onclick=sendText;
 $('txt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)sendText()}); // IME composition අතරතුර පමණක් Enter නොසලකයි
 $('file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
-  if(f.size>25*1024*1024)return alert('25MB ට වැඩි විය නොහැක');
+  if(f.size>25*1024*1024)return alert('25MB ');
   send(f.type.startsWith('video')?'video':'image',null,f)};
 $('mic').onclick=async()=>{
   if(rec&&rec.state==='recording'){rec.stop();return}
