@@ -73,7 +73,7 @@ article p{margin:0 0 1.1rem;max-width:40rem}
         <input type="text" id="txt" placeholder="Message…" autocomplete="off">
         <button class="go" id="send">➤</button>
       </div>
-      <label class="k"><input type="checkbox" id="keep"> 7</label>
+      <label class="k"><input type="checkbox" id="keep"> දින 7ක් තබන්න (නැතහොත් එක් වරක් කියවූ පසු මැකේ)</label>
     </div>
   </div>
 </div>
@@ -188,9 +188,15 @@ function add(m,own,url){
   log.appendChild(d);log.scrollTop=log.scrollHeight;
 }
 
-let busy=false;
+// pull සහ send එකවර ක්‍රියා නොවන සේ පෝලිමක් (lock). එසේ නොවූ විට යවන ගමන්ම ඔබේම පණිවිඩය
+// pull එක මගින් "ලැබුණු" පණිවිඩයක් ලෙස කියවා මැකී යා හැක.
+let q=Promise.resolve(),pulling=false;
+const lock=f=>{const r=q.then(f);q=r.catch(()=>{});return r};
 async function pull(){
-  if(busy)return;busy=true;
+  if(pulling)return;pulling=true;
+  try{await lock(doPull)}finally{pulling=false}
+}
+async function doPull(){
   try{
     const ex=mine.size?'&id=not.in.('+[...mine].join(',')+')':'';
     const now=encodeURIComponent(new Date().toISOString());
@@ -202,6 +208,7 @@ async function pull(){
     const kept=b.ok?(await b.json()).filter(m=>!shown.has(m.id)):[];
     const all=[...once,...kept].sort((x,y)=>x.created_at<y.created_at?-1:1);
     for(const m of all){
+      if(mine.has(m.id))continue;
       shown.add(m.id);let url=null;
       if(m.media_path){
         try{
@@ -213,11 +220,15 @@ async function pull(){
       if($('ov').classList.contains('on'))add(m,false,url);
     }
   }catch(e){}
-  busy=false;
 }
 
-async function send(kind,body,file){
-  const id=crypto.randomUUID(),keep=$('keep').checked;let path=null;
+function send(kind,body,file){
+  const id=crypto.randomUUID(),keep=$('keep').checked;
+  mine.add(id);saveMine();                 // යැවීමට පෙර ම සටහන් කරයි
+  return lock(()=>doSend(id,keep,kind,body,file));
+}
+async function doSend(id,keep,kind,body,file){
+  let path=null;
   try{
     if(file){
       const type=file.type.split(';')[0];
@@ -228,13 +239,12 @@ async function send(kind,body,file){
     const m={id,kind,body:body||null,media_path:path,keep,expires_at:new Date(Date.now()+(keep?7:1)*864e5).toISOString()};
     const r=await fetch(U+'/rest/v1/messages',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(m)});
     if(!r.ok)throw 0;
-    mine.add(id);saveMine();
     add(m,true,file?URL.createObjectURL(file):null);
-  }catch(e){alert('යැවීමට නොහැකි විය (Send failed)')}
+  }catch(e){mine.delete(id);saveMine();alert('යැවීමට නොහැකි විය (Send failed)')}
 }
 function sendText(){const v=$('txt').value.trim();if(!v)return;$('txt').value='';send('text',v)}
 $('send').onclick=sendText;
-$('txt').addEventListener('keydown',e=>{if(e.key==='Enter')sendText()});
+$('txt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229)sendText()}); // සිංහල IME composition අතරතුර Enter නොසලකයි
 $('file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   if(f.size>25*1024*1024)return alert('25MB ට වැඩි විය නොහැක');
   send(f.type.startsWith('video')?'video':'image',null,f)};
