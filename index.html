@@ -3,12 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src blob: data:; media-src blob:; connect-src https://cfozezblcpyfyzsdjvph.supabase.co; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow">
 <title>Reading Room</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;1,400&family=Noto+Sans+Sinhala:wght@400;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#eef2f1;--paper:#fbfcfb;--ink:#16232a;--mute:#5a6b72;--line:#cdd8d6;--acc:#0e5a62;--acc2:#e3f0ee;--me:#d4ebe7;--them:#f0f0f4}
-@media(prefers-color-scheme:dark){:root{--bg:#0f171a;--paper:#162126;--ink:#e6eeee;--mute:#93a5aa;--line:#2a3a40;--acc:#6cc4cc;--acc2:#1c2f33;--me:#1f4448;--them:#243138}}
+:root{--bg:#eef2f1;--paper:#fbfcfb;--ink:#16232a;--mute:#5a6b72;--line:#cdd8d6;--acc:#0e5a62;--acc2:#e3f0ee;--me:#d4ebe7;--them:#f0f0f4;--nw:#c0392b;--rd:#1d5fd1}
+@media(prefers-color-scheme:dark){:root{--bg:#0f171a;--paper:#162126;--ink:#e6eeee;--mute:#93a5aa;--line:#2a3a40;--acc:#6cc4cc;--acc2:#1c2f33;--me:#1f4448;--them:#243138;--nw:#ff6b6b;--rd:#6aa9ff}}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:19px/1.7 Newsreader,Georgia,serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
@@ -17,13 +20,14 @@ h1.site{font-size:1rem;font-weight:400;color:var(--mute);margin:0 0 1.5rem;font-
 article{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:2rem 1.5rem;margin-bottom:2rem}
 article h2{font-size:2rem;line-height:1.2;margin:0 0 1.25rem;font-weight:600}
 article p{margin:0 0 1.1rem;max-width:40rem}
+body.nw h1.site,body.nw article h2{color:var(--nw)}
+body.rd h1.site,body.rd article h2{color:var(--rd)}
 .vocab{margin-top:2rem;border-top:2px solid var(--acc);padding-top:1rem}
 .vocab h3{margin:0 0 .5rem;font-size:1.05rem;color:var(--acc)}
 .vocab dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:.35rem 1.25rem}
 .vocab dt{font-weight:600}
 .vocab dd{margin:0;font-family:'Noto Sans Sinhala',sans-serif;font-size:.95rem;color:var(--mute)}
 .note{color:var(--mute);text-align:center;padding:2rem}
-/* listen / next / footer */
 .top{display:flex;gap:.75rem;align-items:flex-start;justify-content:space-between}
 .say{border:0;background:none;color:var(--mute);cursor:pointer;font-size:.9rem;line-height:1;padding:.2rem .35rem;border-radius:4px;vertical-align:middle;opacity:.8}
 .say:hover,.say.on{color:var(--acc);opacity:1}
@@ -33,11 +37,10 @@ article p{margin:0 0 1.1rem;max-width:40rem}
 .nx:hover{opacity:1;color:var(--acc)}
 #ft{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--paper);border-top:1px solid var(--line);text-align:center;color:var(--mute);font:italic .85rem/1.4 Newsreader,Georgia,serif;padding:.4rem 1rem calc(.4rem + env(safe-area-inset-bottom,0px))}
 #ft b{display:block;font-weight:600;font-style:normal;color:var(--ink);font-size:.9rem}
-/* popup */
 #ov{position:fixed;inset:0;background:rgba(5,12,14,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:1rem}
 #ov.on{display:flex}
-#box{width:min(26rem,100%);height:min(34rem,90vh);background:var(--paper);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;font:16px/1.4 system-ui,'Noto Sans Sinhala',sans-serif}
-#log{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.5rem}
+#box{width:min(26rem,100%);height:min(34rem,90vh);background:var(--paper);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;font:16px/1.4 system-ui,'Noto Sans Sinhala',sans-serif;-webkit-user-select:none;user-select:none}
+#log{flex:1;overflow-y:auto;padding:.8rem;display:flex;flex-direction:column;gap:.5rem;touch-action:manipulation}
 #log.veil>*{display:none}
 .m{max-width:80%;padding:.5rem .7rem;border-radius:12px;background:var(--them);align-self:flex-start;word-break:break-word}
 .m.me{background:var(--me);align-self:flex-end}
@@ -46,19 +49,17 @@ article p{margin:0 0 1.1rem;max-width:40rem}
 .m small{display:block;color:var(--mute);font-size:.7rem;margin-top:.2rem}
 #bar{border-top:1px solid var(--line);padding:.5rem;display:flex;flex-direction:column;gap:.4rem}
 #row{display:flex;gap:.4rem;align-items:center}
-#bar input[type=text]{flex:1;min-width:0;padding:.55rem .7rem;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+#bar input[type=text]{flex:1;min-width:0;padding:.55rem .7rem;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;-webkit-user-select:text;user-select:text}
 #bar button,.att{border:0;background:var(--acc2);color:var(--ink);border-radius:8px;padding:.5rem .65rem;font-size:1.05rem;cursor:pointer;line-height:1}
 #bar button.go{background:var(--acc);color:var(--paper)}
 #bar button.rec{background:#c0392b;color:#fff}
 #bar button:focus-visible,#bar input:focus-visible,.att:focus-within{outline:2px solid var(--acc);outline-offset:1px}
-#bar label.k{font-size:.8rem;color:var(--mute);display:flex;gap:.4rem;align-items:center}
 .att{position:relative;display:inline-flex}.att input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
 [hidden]{display:none!important}
 #pick{flex:1;display:flex;gap:1.25rem;align-items:center;justify-content:center}
 #pick button{width:5rem;height:5rem;border:1px solid var(--line);border-radius:14px;background:var(--acc2);color:var(--ink);font:600 1.8rem Newsreader,Georgia,serif;cursor:pointer}
 #pick button:hover{border-color:var(--acc)}
 #pick button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-#log{touch-action:manipulation}
 .m small .x{border:0;background:none;color:var(--mute);cursor:pointer;font-size:.75rem;padding:0 .15rem}
 .m small .x:hover{color:#c0392b}
 </style>
@@ -72,14 +73,14 @@ article p{margin:0 0 1.1rem;max-width:40rem}
 <footer id="ft"><b>Read a Book – Feed Your Soul</b>© Chamo’s Reading Room (2026)</footer>
 
 <div id="ov" aria-hidden="true">
-  <div id="box" role="dialog" aria-label="Messages">
+  <div id="box" role="dialog" aria-label="Dialog">
     <div id="pick"><button data-m="B" aria-label="B">B</button><button data-m="C" aria-label="C">C</button></div>
     <div id="log" hidden></div>
     <div id="bar" hidden>
       <div id="row">
-        <label class="att" title="පින්තූර / Video">📎<input type="file" id="file" accept="image/*,video/*"></label>
-        <button id="mic" title="Voice message">🎤</button>
-        <input type="text" id="txt" placeholder="Message…" autocomplete="off">
+        <label class="att" title="Attach">📎<input type="file" id="file" accept="image/*,video/*"></label>
+        <button id="mic" title="Record">🎤</button>
+        <input type="text" id="txt" placeholder="…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
         <button class="go" id="send">➤</button>
       </div>
     </div>
@@ -87,31 +88,35 @@ article p{margin:0 0 1.1rem;max-width:40rem}
 </div>
 
 <script>
+if(window.top!==window.self){document.documentElement.innerHTML=''}
 const U='https://cfozezblcpyfyzsdjvph.supabase.co';
 const K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmb3plemJsY3B5Znl6c2RqdnBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5NTE4NDgsImV4cCI6MjEwNzUyNzg0OH0.SMEcfEw9uuXq9VrsRFzl9pyZub40auLjHWdTJ1iGwdE';
 const H={apikey:K,Authorization:'Bearer '+K};
 const $=id=>document.getElementById(id);
-const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const UU=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MR=/^(image|video|audio)\/[a-z0-9.+-]{1,40}$/i;
+const KINDS=['text','image','video','audio'];
+const okMsg=m=>m&&UU.test(m.id)&&KINDS.includes(m.kind)&&Number.isInteger(m.n)&&m.n>=0&&m.n<=70&&(m.n===0||MR.test(m.mime||''));
+const F=(u,o={},ms=15000)=>fetch(u,{...o,cache:'no-store',referrerPolicy:'no-referrer',signal:window.AbortSignal&&AbortSignal.timeout?AbortSignal.timeout(ms):undefined});
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+const arr=k=>{try{const a=JSON.parse(ls.get(k)||'[]');return Array.isArray(a)?a.filter(x=>UU.test(x)):[]}catch(e){return[]}};
 
-/* ---------- Articles ---------- */
-// සෑම ඉංග්‍රීසි අකුරක්ම වෙන වෙනම click කළ හැකි සේ <span> වලින් ඔතයි
-// words තීරුව array එකක් ලෙස සහතික කරයි (text ලෙස සුරැකී තිබුණත් කියවයි)
-const nw=w=>{try{if(typeof w==='string')w=JSON.parse(w)}catch(e){w=[]}return Array.isArray(w)?w.filter(x=>x&&x.en):[]};
+const nw=w=>{try{if(typeof w==='string')w=JSON.parse(w)}catch(e){w=[]}return Array.isArray(w)?w.filter(x=>x&&typeof x.en==='string'):[]};
 const L=t=>esc(t).replace(/[A-Za-z]/g,c=>'<span>'+c+'</span>');
 let arts=[],idx=0;
 const TTS='speechSynthesis' in window;
 const sp=(a,t)=>TTS?`<button class="say" ${a} aria-label="${t}" title="${t}">🔊</button>`:'';
 function show(){
   const x=arts[idx],ws=nw(x.words);
-  $('list').innerHTML=`<article><div class="top"><h2>${L(x.title)}</h2>`+
+  $('list').innerHTML=`<article><div class="top"><h2>${L(String(x.title||''))}</h2>`+
     (TTS?'<button class="say" data-all aria-label="Listen to the whole article" title="Listen to the whole article">🎧</button>':'')+`</div>`+
-    x.body.split(/\n\s*\n/).map(p=>`<p>${L(p.trim())} ${sp('','Listen to this paragraph')}</p>`).join('')+
+    String(x.body||'').split(/\n\s*\n/).map(p=>`<p>${L(p.trim())} ${sp('','Listen to this paragraph')}</p>`).join('')+
     (ws.length?`<section class="vocab"><h3>${L('Key words')}</h3><dl>`+
       ws.map(w=>`<dt>${L(w.en)} ${sp('data-w="'+esc(w.en)+'"','Pronounce')}</dt><dd>${esc(w.si||'')}</dd>`).join('')+`</dl></section>`:'')+
-    (arts.length>1?`<div class="nxw"><button class="nx" id="nx" title="ඊළඟ ලිපිය" aria-label="Next article">Onward →</button></div>`:'')+
+    (arts.length>1?`<div class="nxw"><button class="nx" id="nx" title="Next article" aria-label="Next article">Onward →</button></div>`:'')+
     `</article>`;
 }
-/* ---- Text to speech ---- */
 let cur=null;
 const pt=n=>{const c=n.cloneNode(true);c.querySelectorAll('button').forEach(b=>b.remove());return c.textContent.replace(/\s+/g,' ').trim()};
 function stopSpeech(){if(TTS)speechSynthesis.cancel();document.querySelectorAll('.say.on').forEach(b=>b.classList.remove('on'));cur=null}
@@ -136,52 +141,68 @@ $('list').addEventListener('click',e=>{
 async function loadArticles(){
   const box=$('list');
   try{
-    const r=await fetch(U+'/rest/v1/articles?select=*&order=id.asc',{headers:H});
+    const r=await F(U+'/rest/v1/articles?select=*&order=id.asc',{headers:H});
     if(!r.ok)throw 0;
     let a=await r.json();
-    if(!a.length){box.innerHTML='<p class="note">No articles yet.</p>';return}
-    // දිනපතා මාරු වීම: අද ඉහළින් ඇති ලිපිය හෙට පහළටත්, ඊළඟ ලිපිය ඉහළටත් යයි (ශ්‍රී ලංකා වේලාව, මධ්‍යම රාත්‍රියේදී)
+    if(!Array.isArray(a)||!a.length){box.innerHTML='<p class="note">No articles yet.</p>';return}
     const day=Math.floor((Date.now()+5.5*3600e3)/864e5);
     const k=day%a.length;
     a=a.slice(k).concat(a.slice(0,k));
     arts=a;idx=0;show();
-  }catch(e){box.innerHTML='<p class="note">Could not load articles. setup.sql Run කර ඇත්දැයි පරීක්ෂා කරන්න.</p>'}
+  }catch(e){box.innerHTML='<p class="note">Could not load articles.</p>'}
 }
 
-/* ---------- රහස් කේතය: පිටුවේ නැත; Supabase (server) හි පමණක් ඇත ---------- */
-let buf='',tm=null;
+let buf='',tm=null,sess=null;
 document.addEventListener('click',e=>{
   const s=e.target;
   if(s.tagName!=='SPAN'||s.children.length||!/^[A-Za-z]$/.test(s.textContent)||!s.closest('#list'))return;
-  buf=(buf+s.textContent.toUpperCase()).slice(-20);   // අවසන් අකුරු 20 පමණක්
-  clearTimeout(tm);tm=setTimeout(checkCode,500);       // click නතර වී තත්පර 0.5කට පසු පරීක්ෂා කරයි
+  buf=(buf+s.textContent.toUpperCase()).slice(-20);
+  clearTimeout(tm);tm=setTimeout(checkCode,500);
 });
+async function rpc(n,a,ms){
+  const r=await F(`${U}/rest/v1/rpc/${n}`,{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(a)},ms);
+  if(!r.ok){let j={};try{j=await r.json()}catch(e){}const e=new Error('x');e.denied=j&&j.message==='denied';throw e}
+  return r.json();
+}
 async function checkCode(){
+  const b=buf;
   try{
-    const r=await fetch(U+'/rest/v1/rpc/check_code',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({buf})});
-    if(r.ok&&(await r.json())===true){buf='';openBox()}
+    const d=await rpc('rr_login',{p_buf:b,p_dev:ls.get('_d')});
+    if(d&&typeof d.s==='string'&&typeof d.d==='string'){buf='';sess=d.s;ls.set('_d',d.d);openBox();upd()}
   }catch(e){}
 }
 
-/* ---------- Messenger ---------- */
+const CH=384*1024;
 let timer=null,shown=new Set(),rec=null,chunks=[];
-const mine=new Set(JSON.parse(localStorage.getItem('_m')||'[]')); // මෙම උපාංගයේ පමණක්; DB හි නැත
-const saveMine=()=>localStorage.setItem('_m',JSON.stringify([...mine].slice(-100)));
+const mine=new Set(arr('_m'));
+const saveMine=()=>ls.set('_m',JSON.stringify([...mine].slice(-100)));
+const seen=new Set(arr('_s'));
+const saveSeen=()=>ls.set('_s',JSON.stringify([...seen].slice(-200)));
+
+function paint(){const s=ls.get('_t');document.body.classList.toggle('nw',s==='r');document.body.classList.toggle('rd',s==='b')}
+async function upd(){
+  const dv=ls.get('_d');if(!dv)return;
+  try{
+    const n=await rpc('rr_unread',{p_dev:dv,p_known:[...mine,...seen]});
+    if(typeof n!=='number')return;
+    const p=ls.get('_t');
+    if(n>0)ls.set('_t','r');else if(p==='r')ls.set('_t','b');
+    paint();
+  }catch(e){if(e&&e.denied){try{localStorage.removeItem('_d')}catch(x){}}}
+}
+paint();
 
 let mode=null,rev=false,taps=[];const bm=new Map();
-// mode: 'B' = යවන පණිවිඩ ගබඩා වේ (දින 3), 'C' = යවන පණිවිඩ එක් වරක් කියවූ පසු මැකේ.
-// දෙයාකාරයෙන්ම පිවිසි විට ලැබෙන/ගබඩා වී ඇති පණිවිඩ පෙනෙන්නේ හිස් අවකාශය 5 වරක් ඔබූ පසුවයි.
 function openBox(){
   stopSpeech();mode=null;rev=false;taps=[];resetLog();
   $('pick').hidden=false;$('log').hidden=true;$('bar').hidden=true;
   $('ov').classList.add('on');$('ov').setAttribute('aria-hidden','false');
-  fetch(U+'/rest/v1/rpc/purge_expired',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:'{}'}).catch(()=>{});
 }
-$('pick').addEventListener('click',e=>{const b=e.target.closest('button');if(b)start(b.dataset.m)});
+$('pick').addEventListener('click',e=>{const b=e.target.closest('button');if(b&&(b.dataset.m==='B'||b.dataset.m==='C'))start(b.dataset.m)});
 function start(m){
   mode=m;shown=new Set();resetLog();
   $('pick').hidden=true;$('log').hidden=false;$('bar').hidden=false;
-  timer=setInterval(pull,3000);          // සඟවා ඇති විට pull() කිසිවක් නොකරයි (කිසිවක් load හෝ මැකීමක් නැත)
+  timer=setInterval(pull,3000);
 }
 function resetLog(){
   for(const o of bm.values())o.url&&URL.revokeObjectURL(o.url);bm.clear();
@@ -189,16 +210,16 @@ function resetLog(){
   lg.innerHTML='';lg.classList.add('veil');
 }
 function closeBox(){
-  clearInterval(timer);timer=null;
+  clearInterval(timer);timer=null;sess=null;
   if(rec&&rec.state!=='inactive'){rec.onstop=null;rec.stream.getTracks().forEach(t=>t.stop());rec.stop()}
   rec=null;$('mic').classList.remove('rec');
   resetLog();$('txt').value='';$('file').value='';mode=null;rev=false;taps=[];
   $('ov').classList.remove('on');$('ov').setAttribute('aria-hidden','true');
+  upd();
 }
 $('ov').addEventListener('click',e=>{if(e.target===$('ov'))closeBox()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('ov').classList.contains('on'))closeBox()});
 
-// හිස් අවකාශය තත්පර 3ක් ඇතුළත 5 වරක් ඔබූ විට පෙන්වයි; නැවත 5 වරක් ඔබූ විට සඟවයි
 $('log').addEventListener('click',e=>{
   if(!mode||e.target.closest('.m'))return;
   const t=Date.now();taps=taps.filter(x=>t-x<3000);taps.push(t);
@@ -208,10 +229,11 @@ $('log').addEventListener('click',e=>{
 function add(m,own,url,del){
   const log=$('log');
   const d=document.createElement('div');d.className='m'+(own?' me':'');
-  if(m.kind==='text')d.textContent=m.body;
+  if(m.kind==='text')d.textContent=String(m.body==null?'':m.body);
   else{const t=m.kind==='image'?'img':m.kind;const n=document.createElement(t);n.src=url;
-    if(t!=='img')n.controls=true;if(m.kind==='video')n.playsInline=true;d.appendChild(n)}
-  if(del){   // ගබඩා කළ පණිවිඩ: ඉතිරි දින ගණන + මකන බොත්තම
+    if(t!=='img'){n.controls=true;n.setAttribute('controlslist','nodownload noremoteplayback');n.disablePictureInPicture=true}
+    if(m.kind==='video')n.playsInline=true;d.appendChild(n)}
+  if(del){
     const sm=document.createElement('small'),x=document.createElement('button');
     sm.textContent=Math.max(1,Math.ceil((new Date(m.expires_at)-Date.now())/864e5))+'d ';
     x.className='x';x.textContent='✕';x.title='Delete';x.setAttribute('aria-label','Delete message');
@@ -220,88 +242,89 @@ function add(m,own,url,del){
   log.appendChild(d);log.scrollTop=log.scrollHeight;return d;
 }
 async function delMsg(m,el){
-  if(!confirm('මෙම පණිවිඩය මකන්නද?'))return;
+  if(!confirm('Delete this message?'))return;
   try{
-    const r=await F(`${U}/rest/v1/messages?id=eq.${m.id}`,{method:'DELETE',headers:H});
-    if(!r.ok)throw 0;
-    if(m.media_path)F(`${U}/storage/v1/object/media/${m.media_path}`,{method:'DELETE',headers:H}).catch(()=>{});
+    await rpc('rr_del',{p_s:sess,p_id:m.id});
     const o=bm.get(m.id);if(o){o.url&&URL.revokeObjectURL(o.url);bm.delete(m.id)}
     el.remove();mine.delete(m.id);saveMine();
-  }catch(e){alert('මැකීමට නොහැකි විය (Delete failed)')}
+  }catch(e){if(e&&e.denied)closeBox();else alert('Delete failed')}
 }
 function flash(){const b=$('send');b.textContent='✓';setTimeout(()=>b.textContent='➤',900)}
 
-// pull සහ send එකවර ක්‍රියා නොවන සේ පෝලිමක් (lock)
-const F=(u,o={},ms=15000)=>fetch(u,{...o,signal:window.AbortSignal&&AbortSignal.timeout?AbortSignal.timeout(ms):undefined});
 let q=Promise.resolve(),pulling=false;
 const lock=f=>{const r=q.then(f);q=r.catch(()=>{});return r};
 async function pull(){
-  if(!rev||!mode||pulling)return;pulling=true;
+  if(!rev||!mode||!sess||pulling)return;pulling=true;
   try{await lock(doPull)}finally{pulling=false}
 }
+async function fetchMedia(m){
+  const parts=[];
+  for(let i=0;i<m.n;i++){
+    const d=await rpc('rr_get',{p_s:sess,p_id:m.id,p_i:i},60000);
+    if(typeof d!=='string')throw 0;
+    const bin=atob(d),u=new Uint8Array(bin.length);
+    for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);
+    parts.push(u);
+  }
+  return URL.createObjectURL(new Blob(parts,{type:m.mime}));
+}
 async function doPull(){
-  if(!rev||!mode)return;
+  if(!rev||!mode||!sess)return;
   try{
-    const now=encodeURIComponent(new Date().toISOString());
-    const ex=mine.size?'&id=not.in.('+[...mine].join(',')+')':'';
-    // 1) එක් වරක් කියවීමට නියමිත ඒවා: මකමින් ම ලබාගනී (පෙන්වීම ආරම්භ වන තුරු මෙය කිසිවිටෙක ක්‍රියා නොකරයි)
-    const a=await F(`${U}/rest/v1/messages?keep=eq.false&expires_at=gt.${now}${ex}`,{method:'DELETE',headers:{...H,Prefer:'return=representation'}});
-    const once=a.ok?await a.json():[];
-    // 2) ගබඩා කළ (දින 3) ඒවා: යවූ + ලැබුණු; කියවූ පමණින් මැකෙන්නේ නැත
-    const b=await F(`${U}/rest/v1/messages?keep=eq.true&expires_at=gt.${now}&select=*&order=created_at`,{headers:H});
-    const stored=b.ok?await b.json():null;
+    const d=await rpc('rr_pull',{p_s:sess,p_mine:[...mine]});
+    const once=(Array.isArray(d.once)?d.once:[]).filter(okMsg).filter(m=>!shown.has(m.id));
+    const stored=(Array.isArray(d.stored)?d.stored:[]).filter(okMsg);
     if(!$('ov').classList.contains('on'))return;
-    if(stored){   // අනෙක් පාර්ශවය මකා දැමූ ඒවා ඉවත් කරයි
-      const ids=new Set(stored.map(m=>m.id));
-      for(const [id,o] of [...bm])if(!ids.has(id)){o.el.remove();o.url&&URL.revokeObjectURL(o.url);bm.delete(id)}
-    }
-    const items=[...once.filter(m=>!mine.has(m.id)).map(m=>({m,st:false})),...(stored||[]).filter(m=>!bm.has(m.id)).map(m=>({m,st:true}))]
+    const ids=new Set(stored.map(m=>m.id));
+    for(const [id,o] of [...bm])if(!ids.has(id)){o.el.remove();o.url&&URL.revokeObjectURL(o.url);bm.delete(id)}
+    const items=[...once.filter(m=>!mine.has(m.id)).map(m=>({m,st:false})),...stored.filter(m=>!bm.has(m.id)).map(m=>({m,st:true}))]
       .sort((x,y)=>x.m.created_at<y.m.created_at?-1:1);
     for(const {m,st} of items){
       let url=null;
-      if(m.media_path){
-        try{
-          const f=await F(`${U}/storage/v1/object/media/${m.media_path}`,{headers:H});
-          url=URL.createObjectURL(await f.blob());
-          if(!st)F(`${U}/storage/v1/object/media/${m.media_path}`,{method:'DELETE',headers:H}).catch(()=>{});
-        }catch(e){continue}
-      }
-      if(!$('ov').classList.contains('on')||(st&&bm.has(m.id))){url&&URL.revokeObjectURL(url);continue}
+      if(m.n>0){try{url=await fetchMedia(m)}catch(e){if(e&&e.denied)throw e;continue}}
+      if(!$('ov').classList.contains('on')||(st&&bm.has(m.id))||(!st&&shown.has(m.id))){url&&URL.revokeObjectURL(url);continue}
       if(st)bm.set(m.id,{el:add(m,mine.has(m.id),url,true),url});
-      else{shown.add(m.id);add(m,false,url)}
+      else{shown.add(m.id);add(m,false,url);rpc('rr_del',{p_s:sess,p_id:m.id}).catch(()=>{})}
+      if(!mine.has(m.id))seen.add(m.id);
     }
-  }catch(e){}
+    saveSeen();
+    upd();
+  }catch(e){if(e&&e.denied)closeBox()}
 }
 
+const b64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]||'');r.onerror=rej;r.readAsDataURL(blob)});
 function send(kind,body,file){
-  const id=crypto.randomUUID(),keep=mode==='B';   // B = ගබඩා (දින 3), C = එක් වරක් කියවූ පසු මැකේ
-  mine.add(id);saveMine();                         // යැවීමට පෙර ම සටහන් කරයි
+  const id=crypto.randomUUID(),keep=mode==='B';
+  mine.add(id);saveMine();
   return lock(()=>doSend(id,keep,kind,body,file));
 }
 async function doSend(id,keep,kind,body,file){
-  let path=null;
   try{
+    if(!sess)throw 0;
+    let n=0,mime=null;
     if(file){
-      const type=file.type.split(';')[0];
-      path=id+'.'+(type.split('/')[1]||'bin');
-      const u=await F(`${U}/storage/v1/object/media/${path}`,{method:'POST',headers:{...H,'Content-Type':type},body:file},90000);
-      if(!u.ok)throw 0;
+      mime=file.type.split(';')[0];
+      if(!MR.test(mime))throw 0;
+      n=Math.ceil(file.size/CH);if(n<1||n>70)throw 0;
     }
-    const m={id,kind,body:body||null,media_path:path,keep,expires_at:new Date(Date.now()+(keep?3:1)*864e5).toISOString()};
-    const r=await F(U+'/rest/v1/messages',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(m)});
-    if(!r.ok)throw 0;
+    await rpc('rr_send',{p_s:sess,p_id:id,p_kind:kind,p_body:body||null,p_mime:mime,p_keep:keep,p_n:n},30000);
+    try{
+      for(let i=0;i<n;i++)await rpc('rr_put',{p_s:sess,p_id:id,p_i:i,p_d:await b64(file.slice(i*CH,(i+1)*CH))},60000);
+    }catch(e){rpc('rr_del',{p_s:sess,p_id:id}).catch(()=>{});throw e}
+    const m={id,kind,body:body||null,keep,expires_at:new Date(Date.now()+(keep?3:1)*864e5).toISOString()};
     if(!$('ov').classList.contains('on'))return;
-    if(keep&&!rev){flash();return}                 // සඟවා ඇති විට නොපෙන්වයි; යැවුණු බව පමණක් ✓
+    if(keep&&!rev){flash();return}
     const url=file?URL.createObjectURL(file):null;
     const el=add(m,true,url,keep);if(keep)bm.set(id,{el,url});
     if(!rev)flash();
-  }catch(e){mine.delete(id);saveMine();alert('යැවීමට නොහැකි විය (Send failed)')}
+  }catch(e){mine.delete(id);saveMine();if(e&&e.denied)closeBox();else alert('Send failed')}
 }
-function sendText(){const v=$('txt').value.trim();if(!v)return;$('txt').value='';send('text',v)}
+function sendText(){const v=$('txt').value.trim();if(!v)return;if(v.length>8000)return alert('Too long');$('txt').value='';send('text',v)}
 $('send').onclick=sendText;
-$('txt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)sendText()}); // IME composition අතරතුර පමණක් Enter නොසලකයි
+$('txt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)sendText()});
 $('file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
-  if(f.size>25*1024*1024)return alert('25MB ට වැඩි විය නොහැක');
+  if(f.size>25*1024*1024)return alert('Max size 25MB');
+  if(!/^(image|video)\//.test(f.type))return;
   send(f.type.startsWith('video')?'video':'image',null,f)};
 $('mic').onclick=async()=>{
   if(rec&&rec.state==='recording'){rec.stop();return}
@@ -312,13 +335,21 @@ $('mic').onclick=async()=>{
     rec.onstop=()=>{st.getTracks().forEach(t=>t.stop());$('mic').classList.remove('rec');
       const b=new Blob(chunks,{type:rec.mimeType||'audio/webm'});if(b.size)send('audio',null,b)};
     rec.start();$('mic').classList.add('rec');
-  }catch(e){alert('Microphone භාවිතයට අවසර නැත')}
+  }catch(e){alert('Microphone access denied')}
 };
 
-// Right click / long-press context menu අක්‍රිය කිරීම
+let act=Date.now();
+['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{act=Date.now()},{passive:true}));
+setInterval(()=>{if($('ov').classList.contains('on')&&Date.now()-act>12e4)closeBox()},5000);
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){if($('ov').classList.contains('on'))closeBox();stopSpeech()}
+  else upd();
+});
+setInterval(()=>{if(!document.hidden)upd()},20000);
 document.addEventListener('contextmenu',e=>e.preventDefault());
 
 loadArticles();
+upd();
 </script>
 </body>
 </html>
